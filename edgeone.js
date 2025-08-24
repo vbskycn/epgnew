@@ -5,9 +5,17 @@ export default {
   // 路由配置
   routes: [
     {
-      // 根路径自动重定向到 index.xml
+      // 根路径直接返回 XML 内容
       path: '/',
-      redirect: '/index.xml'
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=3600'
+      },
+      response: {
+        status: 200,
+        body: await fetch('/index.xml').then(res => res.text())
+      }
     },
     {
       // XML 文件路由 - 读取实际文件内容
