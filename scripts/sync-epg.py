@@ -241,39 +241,6 @@ def save_output_files(xml_content, json_data):
     
     print('所有输出文件保存完成')
 
-def perform_git_operations():
-    """执行 Git 操作"""
-    print('正在执行 Git 操作...')
-    
-    try:
-        # 检查是否有变更
-        result = subprocess.run(['git', 'status', '--porcelain'], 
-                              capture_output=True, text=True, check=True)
-        
-        if not result.stdout.strip():
-            print('没有文件变更，跳过 Git 操作')
-            return
-        
-        # 添加所有文件
-        subprocess.run(['git', 'add', '.'], check=True)
-        print('文件已添加到 Git')
-        
-        # 提交变更
-        commit_message = f'Auto-sync EPG data {datetime.now().isoformat()}'
-        subprocess.run(['git', 'commit', '-m', commit_message], check=True)
-        print('变更已提交')
-        
-        # 推送到远程仓库
-        subprocess.run(['git', 'push'], check=True)
-        print('变更已推送到远程仓库')
-        
-    except subprocess.CalledProcessError as error:
-        print(f'Git 操作失败: {error}')
-        raise
-    except Exception as error:
-        print(f'Git 操作失败: {error}')
-        raise
-
 def main():
     """主函数"""
     start_time = time.time()
@@ -295,8 +262,8 @@ def main():
         # 4. 保存输出文件
         save_output_files(xml_content, json_data)
         
-        # 5. 执行 Git 操作
-        perform_git_operations()
+        # Git 操作现在由 GitHub Actions 工作流处理
+        print('文件保存完成，Git 操作将由工作流处理')
         
         end_time = time.time()
         duration = end_time - start_time
