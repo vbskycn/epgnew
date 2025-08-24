@@ -1,25 +1,13 @@
 // EdgeOne Pages 部署配置
-// 使用 Pages Functions 处理根路径请求
+// 主要配置在 edgeone.json 中
 
 export default {
-  // 路由配置 - 静态文件服务
-  routes: [],
-
   // 全局配置
   global: {
     // 默认响应头
     defaultHeaders: {
       'Access-Control-Allow-Origin': '*',
       'X-Powered-By': 'EdgeOne Pages'
-    }
-  },
-
-  // 缓存配置
-  cache: {
-    // 根路径缓存 1 小时
-    '/': {
-      maxAge: 3600,
-      staleWhileRevalidate: 300
     }
   },
 
