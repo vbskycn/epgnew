@@ -35,9 +35,10 @@ epgnew/
 │   ├── sync-epg.js               # 备用同步脚本 (Node.js)
 │   └── utils.js                  # 工具函数库 (Node.js)
 ├── worker.js                     # Cloudflare Worker 脚本
-├── epg.xml                       # 同步的 XML 数据
-├── epg.json                      # 转换后的 JSON 数据
-├── epg.md5                       # MD5 校验文件
+├── index.xml                     # 同步的 XML 数据
+├── index.xml.gz                  # 同步的 GZ 压缩数据
+├── index.json                    # 转换后的 JSON 数据
+├── md5.txt                       # MD5 校验文件
 ├── requirements.txt              # Python 依赖
 ├── package.json                  # Node.js 依赖
 └── README.md                     # 项目说明
@@ -47,11 +48,12 @@ epgnew/
 
 1. **定时触发**：GitHub Actions 每3小时自动运行
 2. **数据下载**：从主数据源下载 EPG 数据，失败时自动切换到备用源
-3. **智能修复**：自动检测和修复截断或损坏的 XML 文件
-4. **MD5 验证**：计算新数据的 MD5 值，与本地文件比较
-5. **格式转换**：将 XML 数据转换为 JSON 格式，同时将频道 ID 替换为频道名称
-6. **文件保存**：保存 XML、JSON 和 MD5 文件
-7. **Git 操作**：自动提交变更并推送到远程仓库
+3. **智能处理**：自动检测文件类型，支持 XML 和 GZ 压缩格式
+4. **智能修复**：自动检测和修复截断或损坏的 XML 文件
+5. **MD5 验证**：计算新数据的 MD5 值，与本地文件比较
+6. **格式转换**：将 XML 数据转换为 JSON 格式，同时将频道 ID 替换为频道名称
+7. **文件保存**：保存 XML、GZ、JSON 和 MD5 文件
+8. **Git 操作**：自动提交变更并推送到远程仓库
 
 ## 配置说明
 
@@ -108,9 +110,10 @@ node scripts/sync-epg.js
 
 ## 输出文件
 
-- **epg.xml**：原始 EPG 数据（XML 格式）
-- **epg.json**：转换后的 EPG 数据（JSON 格式，包含频道名称映射）
-- **epg.md5**：数据 MD5 校验值
+- **index.xml**：原始 EPG 数据（XML 格式）
+- **index.xml.gz**：原始 EPG 数据（GZ 压缩格式）
+- **index.json**：转换后的 EPG 数据（JSON 格式，包含频道名称映射）
+- **md5.txt**：数据 MD5 校验值
 
 ## JSON 数据格式
 
@@ -176,9 +179,11 @@ node scripts/sync-epg.js
 
 - **可靠性**：Python 的 xmltodict 库比 Node.js 的 xml2js 更能处理格式问题
 - **智能修复**：自动检测和修复截断的 XML 文件
+- **多格式支持**：自动检测并处理 XML 和 GZ 压缩格式
 - **性能优化**：只在数据变化时才进行更新
 - **错误处理**：完善的重试机制和错误恢复
 - **双语言支持**：同时提供 Python 和 Node.js 版本
+- **存储优化**：同时保存原始 GZ 文件和解析后的 XML 文件
 
 ## 贡献
 

@@ -24,9 +24,10 @@ CONFIG = {
     ],
     # 输出文件
     'output_files': {
-        'xml': 'epg.xml',
-        'json': 'epg.json',
-        'md5': 'epg.md5'
+        'xml': 'index.xml',
+        'xml_gz': 'index.xml.gz',
+        'json': 'index.json',
+        'md5': 'md5.txt'
     },
     # 重试配置
     'max_retries': 3,
@@ -45,9 +46,29 @@ def download_file(url):
     response = requests.get(url, headers=headers, timeout=CONFIG['timeout'])
     response.raise_for_status()
     
-    content = response.text
-    print(f"下载完成: {url} ({len(content)} 字符)")
-    return content
+    # 检查是否是 gz 文件
+    if url.endswith('.gz'):
+        # 保存 gz 文件
+        gz_filename = CONFIG['output_files']['xml_gz']
+        with open(gz_filename, 'wb') as f:
+            f.write(response.content)
+        print(f"GZ 文件保存成功: {gz_filename}")
+        
+        # 解压并返回 XML 内容
+        import gzip
+        try:
+            xml_content = gzip.decompress(response.content).decode('utf-8')
+            print(f"GZ 文件解压成功，XML 内容长度: {len(xml_content)} 字符")
+            return xml_content
+        except Exception as e:
+            print(f"GZ 文件解压失败: {e}")
+            # 如果解压失败，尝试直接读取内容
+            return response.text
+    else:
+        # 普通 XML 文件
+        content = response.text
+        print(f"下载完成: {url} ({len(content)} 字符)")
+        return content
 
 def download_epg_data():
     """尝试从多个数据源下载数据"""
