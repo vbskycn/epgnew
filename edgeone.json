@@ -3,11 +3,5 @@
     "epg": {
       "entry": "functions/epg.js"
     }
-  },
-  "routes": [
-    {
-      "src": "/",
-      "dest": "/functions/epg"
-    }
-  ]
+  }
 } 
