@@ -5,6 +5,9 @@
     },
     "test": {
       "entry": "functions/test.js"
+    },
+    "simple": {
+      "entry": "functions/simple.js"
     }
   }
 } 
