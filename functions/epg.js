@@ -1,9 +1,13 @@
 // EdgeOne Pages Function - EPG 数据查询
 // 支持根路径查询参数：/?ch=CCTV1&date=2025-08-24
 
-export async function onRequest(context) {
+export default async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
+  
+  console.log('Pages Function 被调用，URL:', url.toString());
+  console.log('路径:', url.pathname);
+  console.log('查询参数:', Object.fromEntries(url.searchParams.entries()));
   
   // 获取查询参数
   const channel = url.searchParams.get('ch');
@@ -12,8 +16,10 @@ export async function onRequest(context) {
   try {
     // 如果没有查询参数，返回 XML 数据
     if (!channel && !date) {
+      console.log('无查询参数，返回 XML 数据');
       const xmlData = await env.ASSETS.get('index.xml');
       if (xmlData) {
+        console.log('XML 数据读取成功，长度:', xmlData.length);
         return new Response(xmlData, {
           headers: {
             'Content-Type': 'application/xml; charset=utf-8',
@@ -22,6 +28,7 @@ export async function onRequest(context) {
           }
         });
       }
+      console.log('XML 数据读取失败');
       return new Response('<?xml version="1.0" encoding="UTF-8"?><error><message>XML 文件不存在</message></error>', { 
         status: 404,
         headers: {
@@ -32,8 +39,10 @@ export async function onRequest(context) {
     }
     
     // 有查询参数时，返回过滤后的 JSON 数据
+    console.log('有查询参数，返回 JSON 数据');
     const jsonData = await env.ASSETS.get('index.json');
     if (!jsonData) {
+      console.log('JSON 数据读取失败');
       return new Response(JSON.stringify({ error: 'JSON 数据文件不存在' }), { 
         status: 404,
         headers: {
@@ -44,6 +53,7 @@ export async function onRequest(context) {
     }
     
     const epgData = JSON.parse(jsonData);
+    console.log('JSON 数据解析成功，原始数据条数:', epgData.length);
     
     // 过滤数据
     let filteredData = epgData;
@@ -53,6 +63,7 @@ export async function onRequest(context) {
       filteredData = filteredData.filter(programme => 
         programme['@channel'] === channel
       );
+      console.log('按频道过滤后，数据条数:', filteredData.length);
     }
     
     // 按日期过滤
@@ -66,6 +77,7 @@ export async function onRequest(context) {
         }
         return false;
       });
+      console.log('按日期过滤后，数据条数:', filteredData.length);
     }
     
     // 返回过滤后的数据
@@ -76,6 +88,7 @@ export async function onRequest(context) {
       data: filteredData
     };
     
+    console.log('返回响应，数据条数:', filteredData.length);
     return new Response(JSON.stringify(response, null, 2), {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
