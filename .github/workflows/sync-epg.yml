@@ -16,18 +16,18 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
       with:
-        node-version: '18'
-        cache: 'npm'
+        python-version: '3.9'
+        cache: 'pip'
     
-    - name: Install dependencies
+    - name: Install Python dependencies
       run: |
-        npm install node-fetch@2 xml2js simple-git
+        pip install -r requirements.txt
     
     - name: Sync EPG data
-      run: node scripts/sync-epg.js
+      run: python scripts/sync-epg.py
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITHUB_ACTOR: ${{ github.actor }}

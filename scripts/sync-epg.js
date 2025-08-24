@@ -95,6 +95,115 @@ async function downloadEPGData() {
 }
 
 /**
+ * 修复损坏的 XML 内容
+ * @param {string} xmlContent 原始 XML 内容
+ * @returns {string} 修复后的 XML 内容
+ */
+function repairXmlContent(xmlContent) {
+    console.log('正在修复 XML 内容...');
+    
+    let repairedXml = xmlContent.trim();
+    
+    // 检查是否以 </tv> 结尾
+    if (!repairedXml.endsWith('</tv>')) {
+        console.log('XML 缺少结束标签，尝试修复...');
+        
+        // 查找最后一个完整的 programme 标签
+        const lastProgrammeEnd = repairedXml.lastIndexOf('</programme>');
+        if (lastProgrammeEnd > 0) {
+            // 截取到最后一个完整的 programme 标签
+            repairedXml = repairedXml.substring(0, lastProgrammeEnd + 12);
+            console.log('已截取到最后一个完整的 programme 标签');
+        } else {
+            // 如果没有找到完整的 programme 标签，尝试查找最后一个 programme 开始标签
+            const lastProgrammeStart = repairedXml.lastIndexOf('<programme');
+            if (lastProgrammeStart > 0) {
+                // 查找这个 programme 标签的结束位置
+                const nextTagStart = repairedXml.indexOf('<', lastProgrammeStart + 1);
+                if (nextTagStart > 0) {
+                    repairedXml = repairedXml.substring(0, nextTagStart);
+                    console.log('已截取到最后一个 programme 标签的开始');
+                }
+            }
+        }
+        
+        // 添加结束标签
+        repairedXml += '\n</tv>';
+        console.log('已添加结束标签 </tv>');
+    }
+    
+    // 检查开始标签
+    if (!repairedXml.startsWith('<?xml') && !repairedXml.startsWith('<tv')) {
+        repairedXml = '<?xml version="1.0" encoding="UTF-8"?>\n' + repairedXml;
+        console.log('已添加 XML 声明');
+    }
+    
+    // 验证修复后的 XML 结构
+    console.log(`修复后的 XML 长度: ${repairedXml.length} 字符`);
+    console.log(`修复后的 XML 开始: ${repairedXml.substring(0, 200)}...`);
+    console.log(`修复后的 XML 结束: ...${repairedXml.substring(repairedXml.length - 200)}`);
+    
+    // 检查基本结构
+    const hasTvStart = repairedXml.includes('<tv');
+    const hasTvEnd = repairedXml.includes('</tv>');
+    const hasProgramme = repairedXml.includes('<programme');
+    
+    console.log(`XML 结构检查: tv开始=${hasTvStart}, tv结束=${hasTvEnd}, programme=${hasProgramme}`);
+    
+    return repairedXml;
+}
+
+/**
+ * 智能修复损坏的 XML 内容
+ * @param {string} xmlContent 原始 XML 内容
+ * @returns {string} 修复后的 XML 内容
+ */
+function smartRepairXml(xmlContent) {
+    console.log('正在使用智能模式修复 XML 内容...');
+    
+    let repairedXml = xmlContent.trim();
+    
+    // 查找最后一个完整的 programme 标签
+    const lastProgrammeEnd = repairedXml.lastIndexOf('</programme>');
+    if (lastProgrammeEnd > 0) {
+        // 截取到最后一个完整的 programme 标签
+        repairedXml = repairedXml.substring(0, lastProgrammeEnd + 12);
+        console.log('已截取到最后一个完整的 programme 标签');
+        
+        // 添加结束标签
+        repairedXml += '\n</tv>';
+        console.log('已添加结束标签 </tv>');
+        
+        return repairedXml;
+    }
+    
+    // 如果没有找到完整的 programme 标签，尝试查找最后一个 programme 开始标签
+    const lastProgrammeStart = repairedXml.lastIndexOf('<programme');
+    if (lastProgrammeStart > 0) {
+        // 查找这个 programme 标签的结束位置
+        const nextTagStart = repairedXml.indexOf('<', lastProgrammeStart + 1);
+        if (nextTagStart > 0) {
+            repairedXml = repairedXml.substring(0, nextTagStart);
+            console.log('已截取到最后一个 programme 标签的开始');
+            
+            // 添加结束标签
+            repairedXml += '\n</tv>';
+            console.log('已添加结束标签 </tv>');
+            
+            return repairedXml;
+        }
+    }
+    
+    // 如果都失败了，尝试最基本的修复
+    console.log('尝试最基本的 XML 修复...');
+    if (!repairedXml.endsWith('</tv>')) {
+        repairedXml += '\n</tv>';
+    }
+    
+    return repairedXml;
+}
+
+/**
  * 将 XML 转换为 JSON 格式
  * @param {string} xmlContent XML 内容
  * @returns {Promise<Object>} JSON 对象
@@ -103,13 +212,53 @@ async function convertXmlToJson(xmlContent) {
     console.log('正在转换 XML 到 JSON...');
     
     try {
+        // 检查 XML 内容
+        console.log(`XML 内容长度: ${xmlContent.length} 字符`);
+        console.log(`XML 开始: ${xmlContent.substring(0, 200)}...`);
+        console.log(`XML 结束: ...${xmlContent.substring(xmlContent.length - 200)}`);
+        
+        // 首先尝试智能修复
+        let repairedXml = smartRepairXml(xmlContent);
+        
+        // 验证修复后的 XML 结构
+        console.log(`修复后的 XML 长度: ${repairedXml.length} 字符`);
+        console.log(`修复后的 XML 开始: ${repairedXml.substring(0, 200)}...`);
+        console.log(`修复后的 XML 结束: ...${repairedXml.substring(repairedXml.length - 200)}`);
+        
+        // 检查基本结构
+        const hasTvStart = repairedXml.includes('<tv');
+        const hasTvEnd = repairedXml.includes('</tv>');
+        const hasProgramme = repairedXml.includes('<programme');
+        
+        console.log(`XML 结构检查: tv开始=${hasTvStart}, tv结束=${hasTvEnd}, programme=${hasProgramme}`);
+        
         const parser = new xml2js.Parser({
             explicitArray: false,
             mergeAttrs: true,
-            attrNamePrefix: '@'
+            attrNamePrefix: '@',
+            ignoreAttrs: false,
+            trim: true,
+            normalize: true,
+            normalizeTags: false,
+            explicitChildren: false,
+            preserveChildrenOrder: false,
+            charsAsChildren: false,
+            includeWhiteChars: false,
+            strict: false,
+            explicitRoot: true,
+            validator: null,
+            xmlns: false,
+            explicitChildren: false,
+            childkey: '__children__',
+            charkey: '__text__',
+            renderOpts: {
+                pretty: false,
+                indent: '',
+                newline: ''
+            }
         });
         
-        const result = await parser.parseStringPromise(xmlContent);
+        const result = await parser.parseStringPromise(repairedXml);
         
         if (!result.tv || !result.tv.programme) {
             throw new Error('XML 格式无效：缺少 tv 或 programme 元素');
@@ -119,7 +268,31 @@ async function convertXmlToJson(xmlContent) {
         return result;
     } catch (error) {
         console.error('XML 转换失败:', error.message);
-        throw error;
+        
+        // 尝试更宽松的解析
+        try {
+            console.log('尝试使用宽松模式解析...');
+            const parser = new xml2js.Parser({
+                explicitArray: false,
+                mergeAttrs: true,
+                attrNamePrefix: '@',
+                strict: false,
+                ignoreAttrs: false,
+                trim: true
+            });
+            
+            const result = await parser.parseStringPromise(xmlContent);
+            
+            if (result.tv && result.tv.programme) {
+                console.log(`宽松模式解析成功，找到 ${result.tv.programme.length} 个节目`);
+                return result;
+            } else {
+                throw new Error('宽松模式解析后仍无法找到有效数据');
+            }
+        } catch (retryError) {
+            console.error('宽松模式解析也失败了:', retryError.message);
+            throw new Error(`XML 解析失败: ${error.message}`);
+        }
     }
 }
 
