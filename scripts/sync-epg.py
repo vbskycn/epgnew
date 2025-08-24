@@ -48,22 +48,9 @@ def download_file(url):
     
     # 检查是否是 gz 文件
     if url.endswith('.gz'):
-        # 保存 gz 文件
-        gz_filename = CONFIG['output_files']['xml_gz']
-        with open(gz_filename, 'wb') as f:
-            f.write(response.content)
-        print(f"GZ 文件保存成功: {gz_filename}")
-        
-        # 尝试解压并返回 XML 内容
-        import gzip
-        try:
-            xml_content = gzip.decompress(response.content).decode('utf-8')
-            print(f"GZ 文件解压成功，XML 内容长度: {len(xml_content)} 字符")
-            return xml_content
-        except Exception as e:
-            print(f"GZ 文件解压失败: {e}")
-            print("将尝试使用普通 XML 文件作为备选")
-            return None  # 返回 None 表示需要尝试其他数据源
+        # 对于 GZ 文件，返回二进制内容供后续处理
+        print(f"GZ 文件下载完成: {url} ({len(response.content)} 字节)")
+        return response.content
     else:
         # 普通 XML 文件
         content = response.text
@@ -79,20 +66,32 @@ def download_epg_data():
     # 先尝试 XML 文件
     all_sources = xml_sources + gz_sources
     
+    xml_content = None
+    gz_content = None
+    
     for i, source in enumerate(all_sources):
         try:
             print(f"尝试数据源 {i + 1}/{len(all_sources)}: {source}")
             
             for retry in range(CONFIG['max_retries']):
                 try:
-                    data = download_file(source)
-                    if data and data.strip():
-                        print(f"成功从 {source} 下载数据")
-                        return data
-                    elif data is None:
-                        # gz 文件解压失败，继续尝试下一个数据源
-                        print(f"数据源 {source} 解压失败，尝试下一个")
+                    if source.endswith('.gz'):
+                        # 下载 GZ 文件
+                        gz_data = download_file(source)
+                        if gz_data is not None:
+                            gz_content = gz_data
+                            print(f"成功从 {source} 下载 GZ 数据")
+                    else:
+                        # 下载 XML 文件
+                        xml_data = download_file(source)
+                        if xml_data and xml_data.strip():
+                            xml_content = xml_data
+                            print(f"成功从 {source} 下载 XML 数据")
+                    
+                    # 如果两种格式都下载成功，可以提前退出
+                    if xml_content and gz_content:
                         break
+                        
                 except Exception as e:
                     print(f"第 {retry + 1} 次尝试失败: {e}")
                     if retry < CONFIG['max_retries'] - 1:
@@ -103,7 +102,21 @@ def download_epg_data():
             if i == len(all_sources) - 1:
                 raise Exception("所有数据源都失败了")
     
-    raise Exception('无法从任何数据源下载数据')
+    # 优先返回 XML 内容，如果没有则尝试从 GZ 解压
+    if xml_content:
+        return xml_content, gz_content
+    elif gz_content:
+        # 从 GZ 内容解压 XML
+        try:
+            import gzip
+            xml_content = gzip.decompress(gz_content).decode('utf-8')
+            print(f"从 GZ 文件解压得到 XML 内容，长度: {len(xml_content)} 字符")
+            return xml_content, gz_content
+        except Exception as e:
+            print(f"GZ 文件解压失败: {e}")
+            raise Exception("无法从 GZ 文件获取 XML 内容")
+    else:
+        raise Exception('无法从任何数据源下载数据')
 
 def calculate_md5(content):
     """计算字符串的 MD5 哈希值"""
@@ -219,7 +232,7 @@ def convert_xml_to_json(xml_content):
         print(f'XML 转换失败: {error}')
         raise
 
-def save_output_files(xml_content, json_data):
+def save_output_files(xml_content, json_data, gz_content=None):
     """保存所有输出文件"""
     print('正在保存输出文件...')
     
@@ -227,6 +240,22 @@ def save_output_files(xml_content, json_data):
     with open(CONFIG['output_files']['xml'], 'w', encoding='utf-8') as f:
         f.write(xml_content)
     print(f"XML 文件保存成功: {CONFIG['output_files']['xml']}")
+    
+    # 保存或生成 GZ 文件
+    if gz_content:
+        # 如果有下载的 GZ 内容，直接保存
+        with open(CONFIG['output_files']['xml_gz'], 'wb') as f:
+            f.write(gz_content)
+        print(f"GZ 文件保存成功: {CONFIG['output_files']['xml_gz']}")
+    else:
+        # 如果没有 GZ 内容，从 XML 重新生成
+        import gzip
+        try:
+            with open(CONFIG['output_files']['xml_gz'], 'wb') as f:
+                f.write(gzip.compress(xml_content.encode('utf-8')))
+            print(f"GZ 文件重新生成成功: {CONFIG['output_files']['xml_gz']}")
+        except Exception as e:
+            print(f"GZ 文件生成失败: {e}")
     
     # 保存 JSON 文件
     with open(CONFIG['output_files']['json'], 'w', encoding='utf-8') as f:
@@ -249,7 +278,7 @@ def main():
     
     try:
         # 1. 下载 EPG 数据
-        xml_content = download_epg_data()
+        xml_content, gz_content = download_epg_data()
         
         # 2. 检查是否需要更新
         if not needs_update(xml_content):
@@ -260,7 +289,7 @@ def main():
         json_data = convert_xml_to_json(xml_content)
         
         # 4. 保存输出文件
-        save_output_files(xml_content, json_data)
+        save_output_files(xml_content, json_data, gz_content)
         
         # Git 操作现在由 GitHub Actions 工作流处理
         print('文件保存完成，Git 操作将由工作流处理')
