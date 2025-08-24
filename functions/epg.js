@@ -1,7 +1,12 @@
 // EdgeOne Pages Function - EPG 数据查询
 // 支持根路径查询参数：/?ch=CCTV1&date=2025-08-24
 
+// 尝试使用不同的导出方式
 export async function onRequest(context) {
+  return handleRequest(context);
+}
+
+export async function handleRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   
