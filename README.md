@@ -31,16 +31,13 @@ epgnew/
 │   └── workflows/
 │       └── sync-epg.yml          # GitHub Actions 工作流
 ├── scripts/
-│   ├── sync-epg.py               # 主同步脚本 (Python)
-│   ├── sync-epg.js               # 备用同步脚本 (Node.js)
-│   └── utils.js                  # 工具函数库 (Node.js)
+│   └── sync-epg.py               # 主同步脚本 (Python)
 ├── worker.js                     # Cloudflare Worker 脚本
 ├── index.xml                     # 同步的 XML 数据
 ├── index.xml.gz                  # 同步的 GZ 压缩数据
 ├── index.json                    # 转换后的 JSON 数据
 ├── md5.txt                       # MD5 校验文件
 ├── requirements.txt              # Python 依赖
-├── package.json                  # Node.js 依赖
 └── README.md                     # 项目说明
 ```
 
@@ -98,16 +95,6 @@ pip install -r requirements.txt
 python scripts/sync-epg.py
 ```
 
-### Node.js 版本（备用）
-
-```bash
-# 安装 Node.js 依赖
-npm install
-
-# 运行同步脚本
-node scripts/sync-epg.js
-```
-
 ## 输出文件
 
 - **index.xml**：原始 EPG 数据（XML 格式）
@@ -140,12 +127,7 @@ node scripts/sync-epg.js
 
 ### Python 依赖
 - **requests**：HTTP 请求库
-- **xmltodict**：XML 到字典转换库（比 xml2js 更可靠）
-
-### Node.js 依赖（备用）
-- **node-fetch@2**：HTTP 请求库
-- **xml2js**：XML 到 JSON 转换库
-- **simple-git**：Git 操作库
+- **xmltodict**：XML 到字典转换库（高效且可靠）
 
 ## 故障排除
 
@@ -177,13 +159,13 @@ node scripts/sync-epg.js
 
 ## 技术优势
 
-- **可靠性**：Python 的 xmltodict 库比 Node.js 的 xml2js 更能处理格式问题
+- **可靠性**：Python 的 xmltodict 库能很好地处理格式问题
 - **智能修复**：自动检测和修复截断的 XML 文件
 - **多格式支持**：自动检测并处理 XML 和 GZ 压缩格式
 - **性能优化**：只在数据变化时才进行更新
 - **错误处理**：完善的重试机制和错误恢复
-- **双语言支持**：同时提供 Python 和 Node.js 版本
 - **存储优化**：同时保存原始 GZ 文件和解析后的 XML 文件
+- **简洁架构**：纯 Python 实现，依赖简单，易于维护
 
 ## 贡献
 
