@@ -10,20 +10,7 @@ export default {
       redirect: '/index.xml'
     },
     {
-      // 直接访问根路径时返回 index.xml 内容
-      path: '/',
-      headers: {
-        'Content-Type': 'application/xml; charset=utf-8',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=3600'
-      },
-      response: {
-        status: 200,
-        body: '{{ index.xml content }}'
-      }
-    },
-    {
-      // XML 文件路由
+      // XML 文件路由 - 读取实际文件内容
       path: '/index.xml',
       headers: {
         'Content-Type': 'application/xml; charset=utf-8',
@@ -32,11 +19,11 @@ export default {
       },
       response: {
         status: 200,
-        body: '{{ index.xml content }}'
+        body: await fetch('/index.xml').then(res => res.text())
       }
     },
     {
-      // JSON 文件路由
+      // JSON 文件路由 - 读取实际文件内容
       path: '/index.json',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -45,11 +32,11 @@ export default {
       },
       response: {
         status: 200,
-        body: '{{ index.json content }}'
+        body: await fetch('/index.json').then(res => res.text())
       }
     },
     {
-      // GZ 文件路由
+      // GZ 文件路由 - 读取实际文件内容
       path: '/index.xml.gz',
       headers: {
         'Content-Type': 'application/gzip',
@@ -59,11 +46,11 @@ export default {
       },
       response: {
         status: 200,
-        body: '{{ index.xml.gz content }}'
+        body: await fetch('/index.xml.gz').then(res => res.arrayBuffer())
       }
     },
     {
-      // MD5 文件路由
+      // MD5 文件路由 - 读取实际文件内容
       path: '/md5.txt',
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
@@ -72,7 +59,7 @@ export default {
       },
       response: {
         status: 200,
-        body: '{{ md5.txt content }}'
+        body: await fetch('/md5.txt').then(res => res.text())
       }
     }
   ],

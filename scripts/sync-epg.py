@@ -15,12 +15,12 @@ import subprocess
 CONFIG = {
     # EPG 数据源（主备）
     'primary_sources': [
-        'https://raw.githubusercontent.com/sparkssssssssss/epg/main/pp.xml',
-        'https://raw.githubusercontent.com/sparkssssssssss/epg/main/pp.xml.gz'
-    ],
-    'backup_sources': [
         'https://epg.112114.xyz/pp.xml',
         'https://epg.112114.xyz/pp.xml.gz'
+    ],
+    'backup_sources': [
+        'https://raw.githubusercontent.com/sparkssssssssss/epg/main/pp.xml',
+        'https://raw.githubusercontent.com/sparkssssssssss/epg/main/pp.xml.gz'
     ],
     # 输出文件
     'output_files': {
