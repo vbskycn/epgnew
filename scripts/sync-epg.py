@@ -13,13 +13,11 @@ import subprocess
 
 # 配置
 CONFIG = {
-    # EPG 数据源（主备）
+    # EPG 数据源（主备）- 只使用 gz 文件避免编码问题
     'primary_sources': [
-        'https://epg.112114.xyz/pp.xml',
         'https://epg.112114.xyz/pp.xml.gz'
     ],
     'backup_sources': [
-        'https://raw.githubusercontent.com/sparkssssssssss/epg/main/pp.xml',
         'https://raw.githubusercontent.com/sparkssssssssss/epg/main/pp.xml.gz'
     ],
     # 输出文件
@@ -36,7 +34,7 @@ CONFIG = {
 }
 
 def download_file(url):
-    """下载文件内容"""
+    """下载 gz 文件并解压"""
     print(f"正在下载: {url}")
     
     headers = {
@@ -46,25 +44,19 @@ def download_file(url):
     response = requests.get(url, headers=headers, timeout=CONFIG['timeout'])
     response.raise_for_status()
     
-    # 检查是否是 gz 文件
-    if url.endswith('.gz'):
-        # 对于 GZ 文件，返回二进制内容供后续处理
-        print(f"GZ 文件下载完成: {url} ({len(response.content)} 字节)")
-        return response.content
-    else:
-        # 普通 XML 文件
-        content = response.text
-        print(f"下载完成: {url} ({len(content)} 字符)")
-        return content
+    # 下载 gz 文件并解压
+    try:
+        import gzip
+        xml_content = gzip.decompress(response.content).decode('utf-8')
+        print(f"GZ 文件下载并解压成功: {url} -> XML 内容长度: {len(xml_content)} 字符")
+        return xml_content
+    except Exception as e:
+        print(f"GZ 文件解压失败: {e}")
+        raise Exception(f"无法解压 GZ 文件: {e}")
 
 def download_epg_data():
-    """尝试从多个数据源下载数据"""
-    # 优先尝试 XML 文件，然后是 gz 文件
-    xml_sources = [s for s in CONFIG['primary_sources'] + CONFIG['backup_sources'] if not s.endswith('.gz')]
-    gz_sources = [s for s in CONFIG['primary_sources'] + CONFIG['backup_sources'] if s.endswith('.gz')]
-    
-    # 先尝试 XML 文件
-    all_sources = xml_sources + gz_sources
+    """尝试从多个数据源下载 gz 文件"""
+    all_sources = CONFIG['primary_sources'] + CONFIG['backup_sources']
     
     for i, source in enumerate(all_sources):
         try:
@@ -72,24 +64,10 @@ def download_epg_data():
             
             for retry in range(CONFIG['max_retries']):
                 try:
-                    if source.endswith('.gz'):
-                        # 下载 GZ 文件并解压获取 XML 内容
-                        gz_data = download_file(source)
-                        if gz_data:
-                            try:
-                                import gzip
-                                xml_content = gzip.decompress(gz_data).decode('utf-8')
-                                print(f"从 GZ 文件解压得到 XML 内容，长度: {len(xml_content)} 字符")
-                                return xml_content
-                            except Exception as e:
-                                print(f"GZ 文件解压失败: {e}")
-                                continue
-                    else:
-                        # 下载 XML 文件
-                        xml_data = download_file(source)
-                        if xml_data and xml_data.strip():
-                            print(f"成功从 {source} 下载 XML 数据")
-                            return xml_data
+                    xml_content = download_file(source)
+                    if xml_content and xml_content.strip():
+                        print(f"成功从 {source} 下载并解压数据")
+                        return xml_content
                         
                 except Exception as e:
                     print(f"第 {retry + 1} 次尝试失败: {e}")
@@ -131,52 +109,13 @@ def needs_update(new_content):
         print(f'检查 MD5 失败，将进行更新: {error}')
         return True
 
-def repair_xml_content(xml_content):
-    """修复损坏的 XML 内容"""
-    print('正在修复 XML 内容...')
-    
-    repaired_xml = xml_content.strip()
-    
-    # 检查是否以 </tv> 结尾
-    if not repaired_xml.endswith('</tv>'):
-        print('XML 缺少结束标签，尝试修复...')
-        
-        # 查找最后一个完整的 programme 标签
-        last_programme_end = repaired_xml.rfind('</programme>')
-        if last_programme_end > 0:
-            # 截取到最后一个完整的 programme 标签
-            repaired_xml = repaired_xml[:last_programme_end + 12]
-            print('已截取到最后一个完整的 programme 标签')
-        else:
-            # 如果没有找到完整的 programme 标签，尝试查找最后一个 programme 开始标签
-            last_programme_start = repaired_xml.rfind('<programme')
-            if last_programme_start > 0:
-                # 截取到这个位置之前
-                repaired_xml = repaired_xml[:last_programme_start]
-                print('已截取到最后一个 programme 标签之前')
-        
-        # 添加结束标签
-        repaired_xml += '\n</tv>'
-        print('已添加结束标签 </tv>')
-    
-    # 检查开始标签
-    if not repaired_xml.startswith('<?xml') and not repaired_xml.startswith('<tv'):
-        repaired_xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + repaired_xml
-        print('已添加 XML 声明')
-    
-    print(f'修复后的 XML 长度: {len(repaired_xml)} 字符')
-    return repaired_xml
-
 def convert_xml_to_json(xml_content):
     """将 XML 转换为 JSON 格式"""
     print('正在转换 XML 到 JSON...')
     
     try:
-        # 首先尝试修复 XML 内容
-        repaired_xml = repair_xml_content(xml_content)
-        
-        # 解析 XML
-        xml_dict = xmltodict.parse(repaired_xml)
+        # 直接解析 XML 内容（GZ 文件解压后通常不会有格式问题）
+        xml_dict = xmltodict.parse(xml_content)
         
         if 'tv' not in xml_dict:
             raise Exception('XML 格式无效：缺少 tv 元素')
@@ -217,7 +156,7 @@ def convert_xml_to_json(xml_content):
         print(f'XML 转换失败: {error}')
         raise
 
-def save_output_files(xml_content, json_data, gz_content=None):
+def save_output_files(xml_content, json_data):
     """保存所有输出文件"""
     print('正在保存输出文件...')
     
@@ -226,14 +165,14 @@ def save_output_files(xml_content, json_data, gz_content=None):
         f.write(xml_content)
     print(f"XML 文件保存成功: {CONFIG['output_files']['xml']}")
     
-    # 始终用新的 XML 内容重新生成 GZ 文件，确保一致性
+    # 用新的 XML 内容重新打包成 GZ 文件
     import gzip
     try:
         with open(CONFIG['output_files']['xml_gz'], 'wb') as f:
             f.write(gzip.compress(xml_content.encode('utf-8')))
-        print(f"GZ 文件重新生成成功: {CONFIG['output_files']['xml_gz']}")
+        print(f"GZ 文件重新打包成功: {CONFIG['output_files']['xml_gz']}")
     except Exception as e:
-        print(f"GZ 文件生成失败: {e}")
+        print(f"GZ 文件打包失败: {e}")
     
     # 保存 JSON 文件
     with open(CONFIG['output_files']['json'], 'w', encoding='utf-8') as f:
@@ -256,7 +195,7 @@ def main():
     
     try:
         # 1. 下载 EPG 数据
-        xml_content = download_epg_data()
+        xml_content, gz_content = download_epg_data()
         
         # 2. 检查是否需要更新
         if not needs_update(xml_content):
