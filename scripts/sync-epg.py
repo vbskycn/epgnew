@@ -195,7 +195,7 @@ def main():
     
     try:
         # 1. 下载 EPG 数据
-        xml_content, gz_content = download_epg_data()
+        xml_content = download_epg_data()
         
         # 2. 检查是否需要更新
         if not needs_update(xml_content):
