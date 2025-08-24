@@ -1,7 +1,7 @@
 // EdgeOne Pages Function - EPG 数据查询
 // 支持根路径查询参数：/?ch=CCTV1&date=2025-08-24
 
-export default async function onRequest(context) {
+export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   
@@ -9,8 +9,6 @@ export default async function onRequest(context) {
   console.log('完整 URL:', url.toString());
   console.log('路径:', url.pathname);
   console.log('查询参数:', Object.fromEntries(url.searchParams.entries()));
-  console.log('请求方法:', request.method);
-  console.log('用户代理:', request.headers.get('user-agent'));
   
   // 获取查询参数
   const channel = url.searchParams.get('ch');
@@ -34,22 +32,8 @@ export default async function onRequest(context) {
         });
       }
       
-      console.log('XML 数据读取失败，尝试读取 JSON 文件');
-      // 如果 XML 文件不存在，尝试返回 JSON 数据
-      const jsonData = await env.ASSETS.get('index.json');
-      if (jsonData) {
-        console.log('JSON 数据读取成功，长度:', jsonData.length);
-        return new Response(jsonData, {
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'public, max-age=3600'
-          }
-        });
-      }
-      
-      console.log('所有数据文件读取失败');
-      return new Response('<?xml version="1.0" encoding="UTF-8"?><error><message>数据文件不存在</message></error>', { 
+      console.log('XML 数据读取失败');
+      return new Response('<?xml version="1.0" encoding="UTF-8"?><error><message>XML 文件不存在</message></error>', { 
         status: 404,
         headers: {
           'Content-Type': 'application/xml; charset=utf-8',
@@ -121,8 +105,7 @@ export default async function onRequest(context) {
     console.error('EPG 查询错误:', error);
     return new Response(JSON.stringify({ 
       error: '查询失败', 
-      message: error.message,
-      stack: error.stack
+      message: error.message
     }), { 
       status: 500,
       headers: {
