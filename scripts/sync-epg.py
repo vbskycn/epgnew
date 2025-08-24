@@ -54,7 +54,7 @@ def download_file(url):
             f.write(response.content)
         print(f"GZ 文件保存成功: {gz_filename}")
         
-        # 解压并返回 XML 内容
+        # 尝试解压并返回 XML 内容
         import gzip
         try:
             xml_content = gzip.decompress(response.content).decode('utf-8')
@@ -62,8 +62,8 @@ def download_file(url):
             return xml_content
         except Exception as e:
             print(f"GZ 文件解压失败: {e}")
-            # 如果解压失败，尝试直接读取内容
-            return response.text
+            print("将尝试使用普通 XML 文件作为备选")
+            return None  # 返回 None 表示需要尝试其他数据源
     else:
         # 普通 XML 文件
         content = response.text
@@ -72,7 +72,12 @@ def download_file(url):
 
 def download_epg_data():
     """尝试从多个数据源下载数据"""
-    all_sources = CONFIG['primary_sources'] + CONFIG['backup_sources']
+    # 优先尝试 XML 文件，然后是 gz 文件
+    xml_sources = [s for s in CONFIG['primary_sources'] + CONFIG['backup_sources'] if not s.endswith('.gz')]
+    gz_sources = [s for s in CONFIG['primary_sources'] + CONFIG['backup_sources'] if s.endswith('.gz')]
+    
+    # 先尝试 XML 文件
+    all_sources = xml_sources + gz_sources
     
     for i, source in enumerate(all_sources):
         try:
@@ -84,6 +89,10 @@ def download_epg_data():
                     if data and data.strip():
                         print(f"成功从 {source} 下载数据")
                         return data
+                    elif data is None:
+                        # gz 文件解压失败，继续尝试下一个数据源
+                        print(f"数据源 {source} 解压失败，尝试下一个")
+                        break
                 except Exception as e:
                     print(f"第 {retry + 1} 次尝试失败: {e}")
                     if retry < CONFIG['max_retries'] - 1:
