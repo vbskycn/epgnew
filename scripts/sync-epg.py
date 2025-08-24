@@ -66,9 +66,6 @@ def download_epg_data():
     # 先尝试 XML 文件
     all_sources = xml_sources + gz_sources
     
-    xml_content = None
-    gz_content = None
-    
     for i, source in enumerate(all_sources):
         try:
             print(f"尝试数据源 {i + 1}/{len(all_sources)}: {source}")
@@ -76,21 +73,23 @@ def download_epg_data():
             for retry in range(CONFIG['max_retries']):
                 try:
                     if source.endswith('.gz'):
-                        # 下载 GZ 文件
+                        # 下载 GZ 文件并解压获取 XML 内容
                         gz_data = download_file(source)
-                        if gz_data is not None:
-                            gz_content = gz_data
-                            print(f"成功从 {source} 下载 GZ 数据")
+                        if gz_data:
+                            try:
+                                import gzip
+                                xml_content = gzip.decompress(gz_data).decode('utf-8')
+                                print(f"从 GZ 文件解压得到 XML 内容，长度: {len(xml_content)} 字符")
+                                return xml_content
+                            except Exception as e:
+                                print(f"GZ 文件解压失败: {e}")
+                                continue
                     else:
                         # 下载 XML 文件
                         xml_data = download_file(source)
                         if xml_data and xml_data.strip():
-                            xml_content = xml_data
                             print(f"成功从 {source} 下载 XML 数据")
-                    
-                    # 如果两种格式都下载成功，可以提前退出
-                    if xml_content and gz_content:
-                        break
+                            return xml_data
                         
                 except Exception as e:
                     print(f"第 {retry + 1} 次尝试失败: {e}")
@@ -102,21 +101,7 @@ def download_epg_data():
             if i == len(all_sources) - 1:
                 raise Exception("所有数据源都失败了")
     
-    # 优先返回 XML 内容，如果没有则尝试从 GZ 解压
-    if xml_content:
-        return xml_content, gz_content
-    elif gz_content:
-        # 从 GZ 内容解压 XML
-        try:
-            import gzip
-            xml_content = gzip.decompress(gz_content).decode('utf-8')
-            print(f"从 GZ 文件解压得到 XML 内容，长度: {len(xml_content)} 字符")
-            return xml_content, gz_content
-        except Exception as e:
-            print(f"GZ 文件解压失败: {e}")
-            raise Exception("无法从 GZ 文件获取 XML 内容")
-    else:
-        raise Exception('无法从任何数据源下载数据')
+    raise Exception('无法从任何数据源下载数据')
 
 def calculate_md5(content):
     """计算字符串的 MD5 哈希值"""
@@ -241,21 +226,14 @@ def save_output_files(xml_content, json_data, gz_content=None):
         f.write(xml_content)
     print(f"XML 文件保存成功: {CONFIG['output_files']['xml']}")
     
-    # 保存或生成 GZ 文件
-    if gz_content:
-        # 如果有下载的 GZ 内容，直接保存
+    # 始终用新的 XML 内容重新生成 GZ 文件，确保一致性
+    import gzip
+    try:
         with open(CONFIG['output_files']['xml_gz'], 'wb') as f:
-            f.write(gz_content)
-        print(f"GZ 文件保存成功: {CONFIG['output_files']['xml_gz']}")
-    else:
-        # 如果没有 GZ 内容，从 XML 重新生成
-        import gzip
-        try:
-            with open(CONFIG['output_files']['xml_gz'], 'wb') as f:
-                f.write(gzip.compress(xml_content.encode('utf-8')))
-            print(f"GZ 文件重新生成成功: {CONFIG['output_files']['xml_gz']}")
-        except Exception as e:
-            print(f"GZ 文件生成失败: {e}")
+            f.write(gzip.compress(xml_content.encode('utf-8')))
+        print(f"GZ 文件重新生成成功: {CONFIG['output_files']['xml_gz']}")
+    except Exception as e:
+        print(f"GZ 文件生成失败: {e}")
     
     # 保存 JSON 文件
     with open(CONFIG['output_files']['json'], 'w', encoding='utf-8') as f:
@@ -278,7 +256,7 @@ def main():
     
     try:
         # 1. 下载 EPG 数据
-        xml_content, gz_content = download_epg_data()
+        xml_content = download_epg_data()
         
         # 2. 检查是否需要更新
         if not needs_update(xml_content):
@@ -289,7 +267,7 @@ def main():
         json_data = convert_xml_to_json(xml_content)
         
         # 4. 保存输出文件
-        save_output_files(xml_content, json_data, gz_content)
+        save_output_files(xml_content, json_data)
         
         # Git 操作现在由 GitHub Actions 工作流处理
         print('文件保存完成，Git 操作将由工作流处理')
