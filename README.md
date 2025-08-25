@@ -13,33 +13,7 @@
 - 🔧 **智能修复**：自动修复截断或损坏的 XML 文件
 - 🐍 **Python 实现**：使用 Python 和 xmltodict 实现可靠的 XML 解析
 
-## 数据源
 
-### 主数据源
-- `https://raw.githubusercontent.com/sparkssssssssss/epg/main/pp.xml`
-- `https://raw.githubusercontent.com/sparkssssssssss/epg/main/pp.xml.gz`
-
-### 备用数据源
-- `https://epg.112114.xyz/pp.xml`
-- `https://epg.112114.xyz/pp.xml.gz`
-
-## 项目结构
-
-```
-epgnew/
-├── .github/
-│   └── workflows/
-│       └── sync-epg.yml          # GitHub Actions 工作流
-├── scripts/
-│   └── sync-epg.py               # 主同步脚本 (Python)
-├── worker.js                     # Cloudflare Worker 脚本
-├── index.xml                     # 同步的 XML 数据
-├── index.xml.gz                  # 同步的 GZ 压缩数据
-├── index.json                    # 转换后的 JSON 数据
-├── md5.txt                       # MD5 校验文件
-├── requirements.txt              # Python 依赖
-└── README.md                     # 项目说明
-```
 
 ## 工作原理
 
@@ -51,39 +25,6 @@ epgnew/
 6. **格式转换**：将 XML 数据转换为 JSON 格式，同时将频道 ID 替换为频道名称
 7. **文件保存**：保存 XML、GZ、JSON 和 MD5 文件
 8. **Git 操作**：自动提交变更并推送到远程仓库
-
-## 配置说明
-
-### GitHub Actions 配置
-
-工作流文件位于 `.github/workflows/sync-epg.yml`，主要配置：
-
-- **定时执行**：`cron: '0 */3 * * *'` (每3小时)
-- **运行环境**：Ubuntu 20.04
-- **Python 版本**：3.9
-- **依赖安装**：自动安装 requirements.txt 中的依赖
-
-### 同步脚本配置
-
-在 `scripts/sync-epg.py` 中可以调整：
-
-- 数据源地址
-- 重试次数和延迟
-- 输出文件名
-- 超时设置
-
-## 使用方法
-
-### 自动运行
-
-项目配置完成后，GitHub Actions 会自动运行，无需手动干预。
-
-### 手动触发
-
-1. 进入 GitHub 仓库页面
-2. 点击 "Actions" 标签
-3. 选择 "Sync EPG Data" 工作流
-4. 点击 "Run workflow" 按钮
 
 ### 本地测试
 
@@ -104,68 +45,34 @@ python scripts/sync-epg.py
 
 ## JSON 数据格式
 
-转换后的 JSON 数据结构：
-```json
-[
-  {
-    "@channel": "CCTV1",
-    "@start": "20240824000000 +0800",
-    "@stop": "20240824003000 +0800",
-    "title": {
-      "@lang": "zh",
-      "#text": "新闻联播"
-    },
-    "desc": {
-      "@lang": "zh", 
-      "#text": "节目描述"
-    }
-  }
-]
+#### 支持diyp&百川
+
+```
+https://youdomain.com/?ch=CCTV1&date=2025-08-25
 ```
 
-## 依赖说明
+#### 转换后的 JSON 数据结构：
 
-### Python 依赖
-- **requests**：HTTP 请求库
-- **xmltodict**：XML 到字典转换库（高效且可靠）
-
-## 故障排除
-
-### 常见问题
-
-1. **数据源无法访问**
-   - 检查网络连接
-   - 验证数据源地址是否有效
-   - 查看 GitHub Actions 日志
-
-2. **XML 解析失败**
-   - Python 版本会自动修复截断的 XML 文件
-   - 检查 XML 格式是否严重损坏
-   - 查看错误日志
-
-3. **Git 操作失败**
-   - 检查仓库权限设置
-   - 验证 GitHub Token 配置
-   - 确认分支保护规则
-
-### 日志查看
-
-所有执行日志都会在 GitHub Actions 中显示，包括：
-- 下载进度
-- XML 修复状态
-- 转换状态
-- 错误信息
-- 执行时间
-
-## 技术优势
-
-- **可靠性**：Python 的 xmltodict 库能很好地处理格式问题
-- **智能修复**：自动检测和修复截断的 XML 文件
-- **多格式支持**：自动检测并处理 XML 和 GZ 压缩格式
-- **性能优化**：只在数据变化时才进行更新
-- **错误处理**：完善的重试机制和错误恢复
-- **存储优化**：同时保存原始 GZ 文件和解析后的 XML 文件
-- **简洁架构**：纯 Python 实现，依赖简单，易于维护
+```json
+{
+    "channel_name": "CCTV1",
+    "date": "2025-08-25",
+    "epg_data": [
+        {
+            "start": "01:00",
+            "end": "01:32",
+            "title": "纪录片瞬间中国-农耕探文明4",
+            "desc": ""
+        },
+        {
+            "start": "23:23",
+            "end": "23:59",
+            "title": "非遗里的中国（第三季）-9",
+            "desc": ""
+        }
+    ]
+}
+```
 
 ## 贡献
 
