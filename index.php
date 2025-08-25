@@ -6,6 +6,10 @@
  * 2. 带参数访问：从index.json中查询特定频道和日期的数据
  */
 
+// 调试信息
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // 设置响应头
 header('Content-Type: text/html; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -15,6 +19,11 @@ header('Access-Control-Allow-Headers: DNT,User-Agent,X-Requested-With,If-Modifie
 // 获取查询参数
 $channel = $_GET['ch'] ?? '';
 $date = $_GET['date'] ?? '';
+
+// 调试输出
+if (!empty($channel) || !empty($date)) {
+    echo "<!-- 调试信息: ch=$channel, date=$date -->\n";
+}
 
 // 如果没有参数，返回XML文件
 if (empty($channel) && empty($date)) {
@@ -60,6 +69,15 @@ if (!empty($channel) || !empty($date)) {
 
         // 过滤数据
         $filteredData = filterEpgData($epgData, $channel, $date);
+        
+        // 检查是否有数据
+        if (empty($filteredData['epg_data'])) {
+            // 获取可用的日期范围
+            $availableDates = getAvailableDates($epgData);
+            $filteredData['message'] = "未找到 {$date} 的EPG数据";
+            $filteredData['available_dates'] = $availableDates;
+            $filteredData['suggestion'] = "请尝试查询其他日期，如: " . implode(', ', array_slice($availableDates, 0, 3));
+        }
         
         // 返回JSON响应
         header('Content-Type: application/json; charset=utf-8');
@@ -138,6 +156,31 @@ function filterEpgData($epgData, $channel, $date) {
     }
 
     return $result;
+}
+
+/**
+ * 获取可用的日期列表
+ * @param array $epgData EPG数据
+ * @return array 可用日期列表
+ */
+function getAvailableDates($epgData) {
+    $dates = [];
+    
+    foreach ($epgData as $programme) {
+        if (isset($programme['@start'])) {
+            $startTime = $programme['@start'];
+            if (is_string($startTime) && preg_match('/^(\d{4})(\d{2})(\d{2})/', $startTime, $matches)) {
+                $date = $matches[1] . '-' . $matches[2] . '-' . $matches[3];
+                if (!in_array($date, $dates)) {
+                    $dates[] = $date;
+                }
+            }
+        }
+    }
+    
+    // 按日期排序
+    sort($dates);
+    return $dates;
 }
 
 /**
